@@ -5,7 +5,7 @@ NUMLINES=0
 
 if [ $# -lt 2 ]
 then
-	echo "Number of script parameters less than 1"
+	echo "Number of script parameters less than 2"
     exit 1
 else
 	FILESDIR=$1
