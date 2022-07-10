@@ -25,6 +25,7 @@ int main(int argc, char* argv[])
 		{
 			syslog(LOG_ERR, "Can't open file %s\n", writefile);
 			return 1;
+			
 		}
 		else
 		{
