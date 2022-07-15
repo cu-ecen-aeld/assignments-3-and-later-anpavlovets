@@ -1,1 +1,1 @@
-home is /home/apts
+home is $HOME

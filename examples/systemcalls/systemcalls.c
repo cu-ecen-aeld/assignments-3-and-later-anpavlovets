@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <stdio.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -53,13 +54,17 @@ bool do_exec(int count, ...)
     int i;
     
     int ret;
-    pid_t pid;
+    pid_t pid = 0;
     int status;
     
+    printf("------------------------------------------------------------------------------------------\n");
+    printf("Command: ");
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
+        printf("%s ", command[i]);
     }
+    printf("\n");
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
@@ -74,19 +79,43 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
-	pid = fork();	
+	pid = fork();		
 	if (pid == -1)
-		return false;
-	ret = execv(command[0], &command[1]);
-	if (ret == -1)
-		return false;
-	if (waitpid (pid, &status, 0) == -1)
-		return false;
-	else if (status != 0)
-		return false;
-
-    va_end(args);
-
+		return false;		
+	
+	if (pid == 0) //child process
+	{
+		ret = execv(command[0], &command[0]);
+		if (ret == -1)
+		{
+			exit(42);
+		}		
+		
+	}	
+	else //parent process, pid belongs to child
+	{	
+		wait(&status);
+	        if (WIFEXITED(status)) 
+	        {
+	        	i = WEXITSTATUS(status);	 
+	        	if (i == 42)
+		 	{
+				va_end(args);
+				return false;
+			}
+			else if (i == 0)
+			{
+				va_end(args);
+	 			return true;
+	 		}
+	 		else
+	 		{
+	 			va_end(args);
+				return false;
+	 		}
+	 		
+            	}
+        }
     return true;
 }
 
@@ -129,18 +158,46 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 		return false;
 	fd = open(outputfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
 	if (fd < 0)
-		return false;
-	if (dup2(fd, 1) < 0)
-		return false;
-	close(fd);
-	ret = execv(command[0], &command[1]);
-	if (ret == -1)
-		return false;
-	if (waitpid (pid, &status, 0) == -1)
-		return false;
-	else if (status != 0)
-		return false;
-    va_end(args);
+		return false;	
+
+	if (pid == 0) //child process
+	{
+		if (dup2(fd, 1) < 0)
+			return false;
+		close(fd);
+		
+		ret = execv(command[0], &command[0]);
+		if (ret == -1)
+		{
+			exit(42);
+		}		
+		
+	}	
+	else //parent process, pid belongs to child
+	{	
+		close(fd);
+		wait(&status);
+	        if (WIFEXITED(status)) 
+	        {
+	        	i = WEXITSTATUS(status);	 
+	        	if (i == 42)
+		 	{
+				va_end(args);
+				return false;
+			}
+			else if (i == 0)
+			{
+				va_end(args);
+	 			return true;
+	 		}
+	 		else
+	 		{
+	 			va_end(args);
+				return false;
+	 		}
+	 		
+            	}
+        }
 
     return true;
 }
