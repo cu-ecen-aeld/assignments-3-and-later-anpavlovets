@@ -1,4 +1,10 @@
 #include "systemcalls.h"
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <stdio.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -16,6 +22,12 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+	int sys_ret;
+	
+	if (cmd == NULL)
+		return false;
+	else if ( (sys_ret = system(cmd)) == -1 )
+		return false;
 
     return true;
 }
@@ -40,10 +52,19 @@ bool do_exec(int count, ...)
     va_start(args, count);
     char * command[count+1];
     int i;
+    
+    int ret;
+    pid_t pid = 0;
+    int status;
+    
+    printf("------------------------------------------------------------------------------------------\n");
+    printf("Command: ");
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
+        printf("%s ", command[i]);
     }
+    printf("\n");
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
@@ -58,9 +79,43 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
-
-    va_end(args);
-
+	pid = fork();		
+	if (pid == -1)
+		return false;		
+	
+	if (pid == 0) //child process
+	{
+		ret = execv(command[0], &command[0]);
+		if (ret == -1)
+		{
+			exit(42);
+		}		
+		
+	}	
+	else //parent process, pid belongs to child
+	{	
+		wait(&status);
+	        if (WIFEXITED(status)) 
+	        {
+	        	i = WEXITSTATUS(status);	 
+	        	if (i == 42)
+		 	{
+				va_end(args);
+				return false;
+			}
+			else if (i == 0)
+			{
+				va_end(args);
+	 			return true;
+	 		}
+	 		else
+	 		{
+	 			va_end(args);
+				return false;
+	 		}
+	 		
+            	}
+        }
     return true;
 }
 
@@ -75,6 +130,12 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     va_start(args, count);
     char * command[count+1];
     int i;
+    
+    int ret;
+    pid_t pid;
+    int status;
+    int fd;
+    
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
@@ -92,8 +153,51 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+	pid = fork();	
+	if (pid == -1)
+		return false;
+	fd = open(outputfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+	if (fd < 0)
+		return false;	
 
-    va_end(args);
+	if (pid == 0) //child process
+	{
+		if (dup2(fd, 1) < 0)
+			return false;
+		close(fd);
+		
+		ret = execv(command[0], &command[0]);
+		if (ret == -1)
+		{
+			exit(42);
+		}		
+		
+	}	
+	else //parent process, pid belongs to child
+	{	
+		close(fd);
+		wait(&status);
+	        if (WIFEXITED(status)) 
+	        {
+	        	i = WEXITSTATUS(status);	 
+	        	if (i == 42)
+		 	{
+				va_end(args);
+				return false;
+			}
+			else if (i == 0)
+			{
+				va_end(args);
+	 			return true;
+	 		}
+	 		else
+	 		{
+	 			va_end(args);
+				return false;
+	 		}
+	 		
+            	}
+        }
 
     return true;
 }
