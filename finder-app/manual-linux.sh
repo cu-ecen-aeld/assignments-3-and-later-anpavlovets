@@ -37,7 +37,7 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     # TODO: Add your kernel build steps here
     make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} defconfig
     make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all
-    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} modules
+    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} modules
     make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs
 
 fi
@@ -59,10 +59,10 @@ fi
 mkdir rootfs
 cd rootfs
 mkdir bin sbin dev tmp sys proc etc lib home
-mkdir -p usr/bin usr/sbin var/log
+mkdir -p usr/bin usr/sbin usr/lib var/log
 
 cd "${OUTDIR}/linux-stable"
-make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} INSTALL_MOD_PATH="${OUTDIR}/rootfs" modules_install
+make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} INSTALL_MOD_PATH="${OUTDIR}/rootfs" INSTALL_MOD_STRIP=1 modules_install
 
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
@@ -109,7 +109,5 @@ cp -a conf/username.txt "${OUTDIR}/rootfs/home/conf"
 cd "${OUTDIR}/rootfs"
 sudo chown -R root:root *
 # TODO: Create initramfs.cpio.gz
-#find . | sudo cpio -o -pmud | gzip >"${OUTDIR}/initramfs.cpio.gz"
-#find . | sudo cpio --quiet -H newc -o | gzip -n >"${OUTDIR}/initramfs.cpio.gz"
-find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio && cd ..
+find . | cpio -H newc -ov > ${OUTDIR}/initramfs.cpio && cd ..
 gzip -f initramfs.cpio
