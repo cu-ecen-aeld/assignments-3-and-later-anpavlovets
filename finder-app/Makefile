@@ -1,4 +1,4 @@
-makeall: writer.c
+all: writer.c
 	${CROSS_COMPILE}gcc writer.c -o writer
 
 clean: 
