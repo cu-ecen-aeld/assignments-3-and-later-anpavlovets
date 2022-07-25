@@ -8,7 +8,14 @@ set -u
 NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
-username=$(cat conf/username.txt)
+#corrections for assignment-4 Buildroot
+#username=$(cat conf/username.txt)
+if [ -d /etc/finder-app ]
+then
+	username=$(cat /etc/finder-app/conf/username.txt)
+else
+	username=$(cat conf/username.txt)
+fi
 
 if [ $# -lt 2 ]
 then
@@ -45,13 +52,40 @@ fi
 #make clean
 #make
 
-for i in $( seq 1 $NUMFILES)
-do
-#	./writer.sh "$WRITEDIR/${username}$i.txt" "$WRITESTR"
-        ./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
-done
+#corrections for assignment-4 Buildroot
 
-OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+#for i in $( seq 1 $NUMFILES)
+#do
+##	./writer.sh "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+#        ./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+#done
+
+#OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+
+which writer > /dev/null 2>&1
+if [ $? -eq 0 ]
+then
+	for i in $( seq 1 $NUMFILES)
+	do
+		writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+	done
+else
+	for i in $( seq 1 $NUMFILES)
+        do
+                ./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+        done
+fi
+
+which finder.sh > /dev/null 2>&1
+if [ $? -eq 0 ]
+then
+	OUTPUTSTRING=$(finder.sh "$WRITEDIR" "$WRITESTR")
+else
+	OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+fi
+
+echo ${OUTPUTSTRING} > /tmp/assignment-4-result.txt
+#end of corrections
 
 set +e
 echo ${OUTPUTSTRING} | grep "${MATCHSTR}"
