@@ -40,12 +40,10 @@ int main(int argc, char* argv[])
 	int fd;
 	char buf[PACKET_LEN];
 	int bytes_read;
-	int i;
 	int end_of_packet = 0;
 	struct sigaction sig_struct;
 	pid_t pid;
 	int d_mode = 0;
-	int null_fd;
 
 // b. Opens a stream socket bound to port 9000, failing and returning -1 if any of the socket connection steps fail.
 	
@@ -70,6 +68,9 @@ int main(int argc, char* argv[])
         	return -1;
         }
 
+	if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+	    perror("setsockopt(SO_REUSEADDR) failed");
+	    
         if ((bind(listen_fd, servinfo->ai_addr, sizeof(struct sockaddr))) != 0)
         {
         	perror("bind error");
@@ -93,38 +94,6 @@ int main(int argc, char* argv[])
         		syslog(LOG_DEBUG, "I'm child");
         		setsid();
         		chdir("/");
-        		/*
-        	//	for (i = 0; i < 3; i++)	
-		//		close(i);
-			if ( ( null_fd = open("/dev/null", O_RDWR) ) == -1 ) {
-                		syslog(LOG_ERR, "Daemon failed opening /dev/null : %s", strerror(errno));
-                		close(listen_fd);
-                		return -1;
-	    		}
-		    	if ( dup2(null_fd,1) < 0 ) // for the rest of this process, stdout goes to null, not tty
-		    	{
-		        	syslog(LOG_ERR, "Daemon redirecting stdout to /dev/null : %s", strerror(errno));
-		        	close(listen_fd);
-				close(null_fd);
-		        	return -1;
-		    	}
-		    	if ( dup2(null_fd,2) < 0 ) // for the rest of this process, stderr goes to null, not tty
-		    	{
-		        	syslog(LOG_ERR, "Daemon failed redirecting stderr to /dev/null : %s", strerror(errno));
-		        	close(listen_fd);
-			        close(null_fd);
-			        return -1;
-			}
-			if ( dup2(null_fd,0) < 0 ) // for the rest of this process, stdin comes from null, not tty
-		    	{
-		        	syslog(LOG_ERR, "Daemon failed redirecting stdin to /dev/null : %s", strerror(errno));
-		        	close(listen_fd);
-		        	close(null_fd);
-		        	return -1;
-		    	}
-		    // all std streams point to null, can close fd from open to null		    
-		    	close(null_fd);	        	*/
-        		
         	}
         	else if (pid > 0)
         	{
@@ -152,9 +121,7 @@ int main(int argc, char* argv[])
 		client_fd = accept(listen_fd, (struct sockaddr*) &client_addr, (socklen_t *)&addr_len);
 	        syslog(LOG_DEBUG, "accept");
 		if ((client_fd < 0) && (errno == EINTR)) //accept interrupted by signal
-		{
-			/*signal_received = 1;
-			continue;*/
+		{			
 			break;
 		}	
 		else if (client_fd < 0)
