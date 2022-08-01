@@ -93,8 +93,9 @@ int main(int argc, char* argv[])
      		listen_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
                	if (listen_fd == -1)
                    continue;
-
-               if (bind(listen_fd, rp->ai_addr, rp->ai_addrlen) == 0)
+		if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+		    perror("setsockopt(SO_REUSEADDR) failed");
+               	if (bind(listen_fd, rp->ai_addr, rp->ai_addrlen) == 0)
                    break;                  /* Success */
 
                close(listen_fd);
