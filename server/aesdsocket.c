@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
 		perror("getaddrinfo error\n");
 		return -1;
 	}	
-	listen_fd = socket(PF_INET, hints.ai_socktype, hints.ai_protocol);
+	listen_fd = socket(AF_INET, hints.ai_socktype, hints.ai_protocol);
         if (listen_fd == -1)
         {
         	perror("socket error");
