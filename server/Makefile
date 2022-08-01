@@ -1,5 +1,7 @@
+CROSS_COMPILE=
+
 all: aesdsocket.c
-	${CROSS_COMPILE}gcc aesdsocket.c -o aesdsocket -Wall -Werror
+	${CROSS_COMPILE}${CC} aesdsocket.c -o aesdsocket -Wall -Werror
 
 clean: 
 	rm -rf aesdsocket *.o
