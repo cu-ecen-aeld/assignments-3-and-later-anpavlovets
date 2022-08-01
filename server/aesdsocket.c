@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 	int listen_fd, client_fd;	
 	char socket_port[] = "9000";
 	struct addrinfo hints;
-	struct addrinfo *servinfo;
+	struct addrinfo *servinfo, *rp;
 	int status;
 	char client_ip[40];//IPv6 - 39 symbols
 	struct sockaddr_in client_addr;
@@ -47,10 +47,18 @@ int main(int argc, char* argv[])
 
 // b. Opens a stream socket bound to port 9000, failing and returning -1 if any of the socket connection steps fail.
 	
-	memset(&hints, 0, sizeof(hints));
+	/*memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
+	hints.ai_flags = AI_PASSIVE;*/
+	memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+        hints.ai_socktype = SOCK_STREAM; /* Datagram socket */
+        hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+        hints.ai_protocol = 0;          /* Any protocol */
+        hints.ai_canonname = NULL;
+        hints.ai_addr = NULL;
+        hints.ai_next = NULL;
 	
 	memset(&sig_struct, 0, sizeof(sig_struct));
 	sig_struct.sa_handler = sig_handler;
@@ -59,27 +67,41 @@ int main(int argc, char* argv[])
 	{
 		perror("getaddrinfo error\n");
 		return -1;
-	}	
-	listen_fd = socket(AF_INET, hints.ai_socktype, hints.ai_protocol);
-        if (listen_fd == -1)
-        {
-        	perror("socket error");
-        	freeaddrinfo(servinfo);
-        	return -1;
-        }
+	}
+
+	/*listen_fd = socket(AF_INET, hints.ai_socktype, hints.ai_protocol);
+    	if (listen_fd == -1)
+    	{
+       		perror("socket error");
+       		freeaddrinfo(servinfo);
+       		return -1;
+    	}
 
 	if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
 	    perror("setsockopt(SO_REUSEADDR) failed");
 	    
-        if ((bind(listen_fd, servinfo->ai_addr, sizeof(struct sockaddr))) != 0)
-        {
-        	perror("bind error");
-        	close(listen_fd);
-        	freeaddrinfo(servinfo);
-        	return -1;
-        }        
-        freeaddrinfo(servinfo);
-        openlog(NULL, 0, LOG_USER);
+    	if ((bind(listen_fd, servinfo->ai_addr, sizeof(struct sockaddr))) != 0)
+    	{
+       		perror("bind error");
+       		close(listen_fd);
+       		freeaddrinfo(servinfo);
+       		return -1;
+    	}*/
+    
+    	for (rp = servinfo; rp != NULL; rp = rp->ai_next) 
+    	{
+     		listen_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+               	if (listen_fd == -1)
+                   continue;
+
+               if (bind(listen_fd, rp->ai_addr, rp->ai_addrlen) == 0)
+                   break;                  /* Success */
+
+               close(listen_fd);
+        }    
+
+    freeaddrinfo(servinfo);
+    openlog(NULL, 0, LOG_USER);
         if ( (argc == 2) && (!(strcmp(argv[1], "-d")) ) )//make a daemon
         {
         	d_mode = 1;
@@ -119,7 +141,6 @@ int main(int argc, char* argv[])
 // h. Restarts accepting connections from new clients forever in a loop until SIGINT or SIGTERM is received (see below).
 		memset(&client_addr, 0, sizeof(client_addr));
 		client_fd = accept(listen_fd, (struct sockaddr*) &client_addr, (socklen_t *)&addr_len);
-	        syslog(LOG_DEBUG, "accept");
 		if ((client_fd < 0) && (errno == EINTR)) //accept interrupted by signal
 		{			
 			break;
@@ -127,11 +148,12 @@ int main(int argc, char* argv[])
 		else if (client_fd < 0)
 		{
 			syslog(LOG_DEBUG, "accept_error");
+			perror("accept_error:");
 			close(listen_fd);
 			return -1;	
 			
 		}
-		
+	        syslog(LOG_DEBUG, "accepted");		
 		strcpy(client_ip, inet_ntoa(client_addr.sin_addr));
 		
 // d. Logs message to the syslog “Accepted connection from xxx” where XXXX is the IP address of the connected client. 	
